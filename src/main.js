@@ -1,19 +1,22 @@
 import Phaser from "phaser";
+import { BootScene } from "./game/scenes/BootScene.js";
+import { MenuScene } from "./game/scenes/MenuScene.js";
+import { PlayScene } from "./game/scenes/PlayScene.js";
+import { GameOverScene } from "./game/scenes/GameOverScene.js";
 
-const config = {
+new Phaser.Game({
   type: Phaser.AUTO,
   parent: "game",
-  width: 800,
-  height: 450,
-  backgroundColor: "#102030",
-  scene: {
-    create() {
-      this.add.text(200, 200, "Mars Patrol 🚀", {
-        fontSize: "32px",
-        color: "#ffffff"
-      });
-    }
-  }
-};
-
-new Phaser.Game(config);
+  backgroundColor: "#0b0f14",
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 960,
+    height: 540
+  },
+  physics: {
+    default: "arcade",
+    arcade: { gravity: { y: 1400 }, debug: false }
+  },
+  scene: [BootScene, MenuScene, PlayScene, GameOverScene]
+});
