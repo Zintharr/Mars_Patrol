@@ -42,8 +42,6 @@ export class PlayScene extends Phaser.Scene {
     // Rover
     this.rover = new Rover(this, 160, GAME.GROUND_Y - 40);
     this.add.existing(this.rover);
-	this.makeFxTextures();
-	this.setupJuiceFx();
 
     // Groups
     this.bullets = this.physics.add.group({ classType: Bullet, maxSize: 40, runChildUpdate: true });
@@ -106,6 +104,11 @@ export class PlayScene extends Phaser.Scene {
     });
     this.input.keyboard.on("keydown-ESC", () => this.scene.start("Menu"));
 
+    // JUICE PACK (procedural textures + emitters + overlays)
+    this.makeFxTextures();
+    this.setupJuiceFx();
+
+    // Make sure audio can start after a user gesture
     this.audioBus.ensure();
   }
 
@@ -116,88 +119,99 @@ export class PlayScene extends Phaser.Scene {
     g.fillStyle(0x9fb6d1, 1);
     const stars = [];
     for (let i = 0; i < 120; i++) {
-      stars.push({ x: this.rng.range(0, GAME.W), y: this.rng.range(0, GAME.H * 0.7), r: this.rng.range(0.6, 2.2), s: this.rng.range(20, 90) });
+      stars.push({
+        x: this.rng.range(0, GAME.W),
+        y: this.rng.range(0, GAME.H * 0.7),
+        r: this.rng.range(0.6, 2.2),
+        s: this.rng.range(20, 90)
+      });
     }
     return { g, stars };
   }
 
+  // ===== JUICE HELPERS =====
+
   makeFxTextures() {
-  // 1) tiny dot for dust/trail
-  const g = this.add.graphics();
-  g.fillStyle(0xffffff, 1);
-  g.fillCircle(2, 2, 2);
-  g.generateTexture("fx_dot", 4, 4);
-  g.clear();
+    // Prevent duplicate texture key errors on hot reload
+    if (this.textures.exists("fx_dot") && this.textures.exists("fx_scanline")) return;
 
-  // 2) thin line for scanlines
-  g.fillStyle(0xffffff, 1);
-  g.fillRect(0, 0, 64, 2);
-  g.generateTexture("fx_scanline", 64, 2);
-  g.destroy();
-}
+    const g = this.add.graphics();
 
-setupJuiceFx() {
-  // Dust/trail particle manager
-  this.particles = this.add.particles(0, 0, "fx_dot").setDepth(900);
+    // Dot for dust/trail
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(2, 2, 2);
+    g.generateTexture("fx_dot", 4, 4);
+    g.clear();
 
-  // Rover trail (subtle)
-  this.trailEmitter = this.particles.createEmitter({
-    x: this.rover.x - 40,
-    y: this.rover.y + 18,
-    lifespan: { min: 180, max: 320 },
-    speedX: { min: -80, max: -240 },
-    speedY: { min: -40, max: 40 },
-    scale: { start: 0.9, end: 0 },
-    quantity: 1,
-    frequency: 35,
-    alpha: { start: 0.12, end: 0 },
-    on: true
-  });
+    // Scanline strip
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(0, 0, 64, 2);
+    g.generateTexture("fx_scanline", 64, 2);
 
-  // Dust “puff” emitter (we trigger it manually on land)
-  this.landPuff = this.particles.createEmitter({
-    x: this.rover.x - 10,
-    y: this.rover.y + 22,
-    lifespan: { min: 220, max: 420 },
-    speedX: { min: -60, max: -240 },
-    speedY: { min: -140, max: -40 },
-    scale: { start: 1.0, end: 0 },
-    quantity: 10,
-    alpha: { start: 0.18, end: 0 },
-    on: false
-  });
+    g.destroy();
+  }
 
-  // Screen-space scanlines (very subtle, “CRT-ish”)
-  this.scan = this.add.tileSprite(0, 0, GAME.W, GAME.H, "fx_scanline")
-    .setOrigin(0)
-    .setScrollFactor(0)
-    .setDepth(1200)
-    .setAlpha(0.06);
-  this.scan.setBlendMode(Phaser.BlendModes.ADD);
+  setupJuiceFx() {
+    this.particles = this.add.particles(0, 0, "fx_dot").setDepth(900);
 
-  // Wormhole glitch overlays (RGB-ish flicker)
-  this.glitchA = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x6f3cff)
-    .setScrollFactor(0).setDepth(1300).setAlpha(0);
-  this.glitchB = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x00d2ff)
-    .setScrollFactor(0).setDepth(1301).setAlpha(0);
+    // Rover trail
+    this.trailEmitter = this.particles.createEmitter({
+      x: this.rover.x - 40,
+      y: this.rover.y + 18,
+      lifespan: { min: 180, max: 320 },
+      speedX: { min: -80, max: -240 },
+      speedY: { min: -40, max: 40 },
+      scale: { start: 0.9, end: 0 },
+      quantity: 1,
+      frequency: 35,
+      alpha: { start: 0.12, end: 0 },
+      on: true
+    });
 
-  this.glitchA.setBlendMode(Phaser.BlendModes.ADD);
-  this.glitchB.setBlendMode(Phaser.BlendModes.ADD);
-}
+    // Landing dust puff (manual trigger)
+    this.landPuff = this.particles.createEmitter({
+      x: this.rover.x - 10,
+      y: this.rover.y + 22,
+      lifespan: { min: 220, max: 420 },
+      speedX: { min: -60, max: -240 },
+      speedY: { min: -140, max: -40 },
+      scale: { start: 1.0, end: 0 },
+      quantity: 10,
+      alpha: { start: 0.18, end: 0 },
+      on: false
+    });
 
-onRoverLanded() {
-  // Tiny camera nudge + dust puff
-  this.cameras.main.shake(60, 0.003);
-  this.landPuff.explode(12, this.rover.x - 10, this.rover.y + 20);
-}
+    // Scanlines
+    this.scan = this.add.tileSprite(0, 0, GAME.W, GAME.H, "fx_scanline")
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(1200)
+      .setAlpha(0.06);
+    this.scan.setBlendMode(Phaser.BlendModes.ADD);
 
+    // Wormhole overlays
+    this.glitchA = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x6f3cff)
+      .setScrollFactor(0).setDepth(1300).setAlpha(0);
+    this.glitchB = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x00d2ff)
+      .setScrollFactor(0).setDepth(1301).setAlpha(0);
+
+    this.glitchA.setBlendMode(Phaser.BlendModes.ADD);
+    this.glitchB.setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  onRoverLanded() {
+    this.cameras.main.shake(60, 0.003);
+    this.landPuff?.explode(12, this.rover.x - 10, this.rover.y + 20);
+  }
+
+  // ===== GAME LOOP =====
 
   crash() {
     if (this.rover.isCrashed) return;
     this.rover.crash();
     this.audioBus.sfxHit();
-	this.cameras.main.shake(180, 0.008);
-	
+    this.cameras.main.shake(180, 0.008);
+
     this.time.delayedCall(700, () => {
       this.scene.start("GameOver", { score: this.score, checkpoint: this.checkpoints.currentLetter() });
     });
@@ -242,11 +256,10 @@ onRoverLanded() {
       const x = (i * 140) - ((this.worldDistance / 3.5) % 140);
       this.bg.fillTriangle(x, 390, x + 90, 340, x + 180, 390);
     }
-  }
-  
-  // scanline drift: tiny motion sells “old-school”
-if (this.scan) this.scan.tilePositionY += 0.2;
 
+    // Scanline drift
+    if (this.scan) this.scan.tilePositionY += 0.2;
+  }
 
   update(_time, delta) {
     const dt = Math.min(delta, 50);
@@ -274,34 +287,12 @@ if (this.scan) this.scan.tilePositionY += 0.2;
     this.obstacles.children.each((o) => o?.scroll(scrollX));
     this.ufos.children.each((u) => u?.scroll(scrollX));
 
-	// Keep trail emitter pinned to rover
-if (this.trailEmitter) {
-  this.trailEmitter.setPosition(this.rover.x - 42, this.rover.y + 18);
-
-  // Trail intensity scales with speed
-  const s = this.rover.currentSpeed();
-  this.trailEmitter.frequency = Phaser.Math.Clamp(70 - (s * 0.08), 18, 70);
-  this.trailEmitter.alpha.start = this.wormhole.active ? 0.22 : 0.12;
-}
-
-// Wormhole “chromatic-ish” glitch (subtle, readable)
-if (this.wormhole.active) {
-  const t = this.time.now;
-  this.glitchA.setAlpha(0.05 + (Math.sin(t / 55) * 0.02));
-  this.glitchB.setAlpha(0.04 + (Math.cos(t / 70) * 0.02));
-
-  // micro jitter gives the “reality bending” vibe
-  this.glitchA.x = GAME.W / 2 + (Math.sin(t / 33) * 2);
-  this.glitchB.x = GAME.W / 2 + (Math.cos(t / 41) * -2);
-
-  // bonus: tiny camera wobble (don’t overdo it)
-  this.cameras.main.rotation = Math.sin(t / 180) * 0.0025;
-} else {
-  this.glitchA?.setAlpha(0);
-  this.glitchB?.setAlpha(0);
-  this.cameras.main.rotation = 0;
-}
-
+    // Trail pinned to rover
+    if (this.trailEmitter) {
+      this.trailEmitter.setPosition(this.rover.x - 42, this.rover.y + 18);
+      this.trailEmitter.frequency = Phaser.Math.Clamp(70 - (speed * 0.08), 18, 70);
+      this.trailEmitter.alpha.start = this.wormhole.active ? 0.22 : 0.12;
+    }
 
     this.spawner.update(dt, this.difficulty);
 
@@ -310,6 +301,20 @@ if (this.wormhole.active) {
 
     this.tryWormhole(dt);
     this.renderBackground(scrollX);
+
+    // Wormhole glitch overlays
+    if (this.wormhole.active) {
+      const t = this.time.now;
+      this.glitchA.setAlpha(0.05 + (Math.sin(t / 55) * 0.02));
+      this.glitchB.setAlpha(0.04 + (Math.cos(t / 70) * 0.02));
+      this.glitchA.x = GAME.W / 2 + (Math.sin(t / 33) * 2);
+      this.glitchB.x = GAME.W / 2 + (Math.cos(t / 41) * -2);
+      this.cameras.main.rotation = Math.sin(t / 180) * 0.0025;
+    } else {
+      this.glitchA?.setAlpha(0);
+      this.glitchB?.setAlpha(0);
+      this.cameras.main.rotation = 0;
+    }
 
     const cp = this.checkpoints.currentLetter();
     const stage = this.checkpoints.currentStage();
