@@ -16,7 +16,7 @@ new Phaser.Game({
   },
   physics: {
     default: "arcade",
-    arcade: { gravity: { y: 1400 }, debug: false }
+    arcade: { gravity: { y: 1600 }, debug: false }
   },
   scene: [BootScene, MenuScene, PlayScene, GameOverScene]
 });
