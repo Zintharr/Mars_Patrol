@@ -1,0 +1,5 @@
+:root { color-scheme: dark; }
+html, body { height: 100%; margin: 0; background: #0b0f14; font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+#app { height: 100%; display: grid; place-items: center; }
+#game { width: min(100vw, 960px); height: min(100vh, 540px); aspect-ratio: 16/9; }
+canvas { display: block; width: 100% !important; height: 100% !important; image-rendering: pixelated; }
