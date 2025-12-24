@@ -152,10 +152,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   setupJuiceFx() {
-    this.particles = this.add.particles(0, 0, "fx_dot").setDepth(900);
-
-    // Rover trail
-    this.trailEmitter = this.particles.createEmitter({
+  // Rover trail emitter (direct ParticleEmitter)
+  this.trailEmitter = this.add.particles(
+    0, 0,
+    "fx_dot",
+    {
       x: this.rover.x - 40,
       y: this.rover.y + 18,
       lifespan: { min: 180, max: 320 },
@@ -164,12 +165,15 @@ export class PlayScene extends Phaser.Scene {
       scale: { start: 0.9, end: 0 },
       quantity: 1,
       frequency: 35,
-      alpha: { start: 0.12, end: 0 },
-      on: true
-    });
+      alpha: { start: 0.12, end: 0 }
+    }
+  ).setDepth(900);
 
-    // Landing dust puff (manual trigger)
-    this.landPuff = this.particles.createEmitter({
+  // Landing puff emitter (off by default; we use explode)
+  this.landPuff = this.add.particles(
+    0, 0,
+    "fx_dot",
+    {
       x: this.rover.x - 10,
       y: this.rover.y + 22,
       lifespan: { min: 220, max: 420 },
@@ -178,31 +182,33 @@ export class PlayScene extends Phaser.Scene {
       scale: { start: 1.0, end: 0 },
       quantity: 10,
       alpha: { start: 0.18, end: 0 },
-      on: false
-    });
+      emitting: false
+    }
+  ).setDepth(900);
 
-    // Scanlines
-    this.scan = this.add.tileSprite(0, 0, GAME.W, GAME.H, "fx_scanline")
-      .setOrigin(0)
-      .setScrollFactor(0)
-      .setDepth(1200)
-      .setAlpha(0.06);
-    this.scan.setBlendMode(Phaser.BlendModes.ADD);
+  // Screen-space scanlines (subtle)
+  this.scan = this.add.tileSprite(0, 0, GAME.W, GAME.H, "fx_scanline")
+    .setOrigin(0)
+    .setScrollFactor(0)
+    .setDepth(1200)
+    .setAlpha(0.06);
+  this.scan.setBlendMode(Phaser.BlendModes.ADD);
 
-    // Wormhole overlays
-    this.glitchA = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x6f3cff)
-      .setScrollFactor(0).setDepth(1300).setAlpha(0);
-    this.glitchB = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x00d2ff)
-      .setScrollFactor(0).setDepth(1301).setAlpha(0);
+  // Wormhole glitch overlays
+  this.glitchA = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x6f3cff)
+    .setScrollFactor(0).setDepth(1300).setAlpha(0);
+  this.glitchB = this.add.rectangle(GAME.W / 2, GAME.H / 2, GAME.W, GAME.H, 0x00d2ff)
+    .setScrollFactor(0).setDepth(1301).setAlpha(0);
 
-    this.glitchA.setBlendMode(Phaser.BlendModes.ADD);
-    this.glitchB.setBlendMode(Phaser.BlendModes.ADD);
-  }
+  this.glitchA.setBlendMode(Phaser.BlendModes.ADD);
+  this.glitchB.setBlendMode(Phaser.BlendModes.ADD);
+}
+
 
   onRoverLanded() {
-    this.cameras.main.shake(60, 0.003);
-    this.landPuff?.explode(12, this.rover.x - 10, this.rover.y + 20);
-  }
+  this.cameras.main.shake(60, 0.003);
+  this.landPuff?.explode(12, this.rover.x - 10, this.rover.y + 20);
+}
 
   // ===== GAME LOOP =====
 
@@ -291,7 +297,12 @@ export class PlayScene extends Phaser.Scene {
     if (this.trailEmitter) {
       this.trailEmitter.setPosition(this.rover.x - 42, this.rover.y + 18);
       this.trailEmitter.frequency = Phaser.Math.Clamp(70 - (speed * 0.08), 18, 70);
-      this.trailEmitter.alpha.start = this.wormhole.active ? 0.22 : 0.12;
+
+// Phaser build differences: alpha may not be an object. Use emitter-level alpha instead.
+if (typeof this.trailEmitter.setAlpha === "function") {
+  this.trailEmitter.setAlpha(this.wormhole.active ? 0.22 : 0.12);
+}
+
     }
 
     this.spawner.update(dt, this.difficulty);
