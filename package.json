@@ -1,5 +1,5 @@
 {
-  "name": "mars-patrol",
+  "name": "steward-app",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "phaser": "^3.80.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.0"
   }
 }
